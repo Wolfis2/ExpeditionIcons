@@ -126,12 +126,6 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
     private void StartSearch()
     {
-        if (_zoneCleared)
-        {
-            DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the expedition has already been detonated.");
-            return;
-        }
-
         if (DetonatorPos == null)
         {
             DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the expedition detonator was not found.");
@@ -200,7 +194,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
     private void StartSearchWithExplosiveCount()
     {
-        if (_zoneCleared || DetonatorPos == null)
+        if (DetonatorPos == null)
         {
             _showExplosiveCountPrompt = false;
             DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the expedition is no longer available.");
@@ -382,11 +376,6 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             if (DetonatorEntity is { } detonator)
             {
                 _zoneCleared = !detonator.IsTargetable;
-            }
-            if (_zoneCleared)
-            {
-                ClearSearch();
-                return null;
             }
         }
 
@@ -576,6 +565,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
         if (_zoneCleared)
         {
+            DrawPlannedPath();
             return;
         }
 
@@ -712,6 +702,11 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             }
         }
 
+        DrawPlannedPath();
+    }
+
+    private void DrawPlannedPath()
+    {
         if (EditedOrNativeScore is { PerPointScore.Count: > 0 } score)
         {
             var path = score.PerPointScore;

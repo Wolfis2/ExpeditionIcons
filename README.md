@@ -19,6 +19,10 @@ to enter explosive placement mode before planning.
 The log also warns when no scorable loot has been detected; move closer and
 let the expedition markers load before starting another search.
 
+The planned path remains visible during placement, even if the detonator
+temporarily becomes untargetable. It stays until you clear it, start a new
+search, or change areas.
+
 Enable **4K enhanced path display** in the planner settings for thicker path
 lines and explosion circles, plus larger, bolder markers. In 4K mode, line
 thickness is adjustable with Path Line Thickness and markers are drawn at four
