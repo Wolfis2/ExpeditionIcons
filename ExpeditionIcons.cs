@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using ExileCore;
+using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -137,7 +138,45 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             return;
         }
 
+        if (TryGetUnplacedExplosiveCount(out var count))
+        {
+            _explosiveCount = count;
+            DebugWindow.LogMsg($"ExpeditionIcons: Read {count} explosives from the expedition counter.");
+            StartSearchWithExplosiveCount();
+            return;
+        }
+
+        DebugWindow.LogMsg("ExpeditionIcons: Could not reliably determine the total bomb count; enter it in the prompt.");
         _showExplosiveCountPrompt = true;
+    }
+
+    private bool TryGetUnplacedExplosiveCount(out int count)
+    {
+        count = 0;
+        if (GameController.EntityListWrapper.ValidEntitiesByType[EntityType.IngameIcon]
+            .Any(entity => entity.Path == ExplosivePath))
+        {
+            return false;
+        }
+
+        Element element = GameController.IngameState.IngameUi.ExpeditionDetonatorElement;
+        if (element == null || !element.IsVisible)
+        {
+            return false;
+        }
+
+        for (var depth = 0; depth < 3; depth++)
+        {
+            var children = element.Children;
+            if (children == null || children.Count == 0 || children[0] == null)
+            {
+                return false;
+            }
+
+            element = children[0];
+        }
+
+        return int.TryParse(element.Text, out count) && count is > 0 and <= 100;
     }
 
     private void StartSearchWithExplosiveCount()
@@ -245,7 +284,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         return new Vector3(gridPosition.GridToWorld(), GameController.IngameState.Data.GetTerrainHeightAt(gridPosition));
     }
 
-    private void DrawCirclesInWorld(List<Vector3> positions, float radius, Color color)
+    private void DrawCirclesInWorld(List<Vector3> positions, float radius, Color color, float thickness = 1)
     {
         const int segments = 90;
         const int segmentSpan = 360 / segments;
@@ -284,7 +323,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
                     }
                 }
 
-                Graphics.DrawLine(c1, c2, 1, color);
+                Graphics.DrawLine(c1, c2, thickness, color);
             }
         }
     }
@@ -652,16 +691,18 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
                 var point = path[i].Point;
                 if (_largeMapOpen)
                 {
-                    Graphics.DrawLine(GetMapScreenPosition(prevPoint), GetMapScreenPosition(point), 1, Settings.PlannerSettings.MapLineColor);
+                    Graphics.DrawLine(GetMapScreenPosition(prevPoint), GetMapScreenPosition(point), Settings.PlannerSettings.PathLineThickness, Settings.PlannerSettings.MapLineColor);
                 }
 
                 var worldPos = GetWorldScreenPosition(point);
-                Graphics.DrawLine(GetWorldScreenPosition(prevPoint), worldPos, 1, Settings.PlannerSettings.WorldLineColor);
+                Graphics.DrawLine(GetWorldScreenPosition(prevPoint), worldPos, Settings.PlannerSettings.PathLineThickness, Settings.PlannerSettings.WorldLineColor);
                 var text = $"#{i}";
-                using (Graphics.SetTextScale(Settings.PlannerSettings.TextMarkerScale))
+                using (Graphics.SetTextScale(Settings.PlannerSettings.TextMarkerScale * 4))
                 {
-                    Graphics.DrawBox(worldPos, worldPos + Graphics.MeasureText(text), Color.Black);
+                    Graphics.DrawBox(worldPos, worldPos + Graphics.MeasureText(text) + new Vector2(2, 1), Color.Black);
                     Graphics.DrawText(text, worldPos, Color.White);
+                    Graphics.DrawText(text, worldPos + Vector2.UnitX, Color.White);
+                    Graphics.DrawText(text, worldPos + new Vector2(2, 0), Color.White);
                     prevPoint = point;
                 }
             }
@@ -676,7 +717,8 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             DrawCirclesInWorld(
                 positions: path.Select(x => ExpandWithTerrainHeight(x.Point)).ToList(),
                 radius: _explosiveRadius,
-                color: Settings.PlannerSettings.ExplosiveColor.Value);
+                color: Settings.PlannerSettings.ExplosiveColor.Value,
+                thickness: Settings.PlannerSettings.PathLineThickness);
         }
     }
 
@@ -698,7 +740,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
                     path[editedIndex] = pos;
                     scoreDiff = pp.GetDetailedScore(path, score.Environment);
                     DrawCirclesInWorld([ExpandWithTerrainHeight(pos)], _explosiveRadius, Color.LightBlue);
-                    Graphics.DrawLine(GetWorldScreenPosition(_editedPath[editedIndex]), GetWorldScreenPosition(pos), 1, Settings.PlannerSettings.WorldLineColor);
+                    Graphics.DrawLine(GetWorldScreenPosition(_editedPath[editedIndex]), GetWorldScreenPosition(pos), Settings.PlannerSettings.PathLineThickness, Settings.PlannerSettings.WorldLineColor);
 
                     if (Input.IsKeyDown(Settings.PlannerSettings.ConfirmEditorPlacementHotkey))
                     {

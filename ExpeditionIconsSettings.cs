@@ -410,6 +410,7 @@ public class PlannerSettings
     public ColorNode CapturedEntityMapFrameColor { get; set; } = new ColorNode(Color.Purple);
 
     public RangeNode<float> TextMarkerScale { get; set; } = new RangeNode<float>(1, 0, 5);
+    public RangeNode<float> PathLineThickness { get; set; } = new RangeNode<float>(4, 1, 12);
 
     public RangeNode<float> MaximumGenerationTimeSeconds { get; set; } = new RangeNode<float>(5, 0, 60);
     public RangeNode<int> SearchThreads { get; set; } = new RangeNode<int>(5, 1, 10);
