@@ -147,12 +147,6 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         }
 
         DebugWindow.LogMsg($"ExpeditionIcons: Could not determine the bomb count ({failure}); enter it in the prompt.");
-        var hovered = GameController.IngameState.UIHover;
-        if (hovered is { Address: not 0 })
-        {
-            DebugWindow.LogMsg($"ExpeditionIcons: Hovered UI element path: {hovered.PathFromRoot}");
-        }
-
         _showExplosiveCountPrompt = true;
     }
 
@@ -191,7 +185,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         var text = element.Text;
         if (!int.TryParse(text, out count) || count is <= 0 or > 100)
         {
-            failure = $"counter UI did not contain a valid count (visible: {isVisible}, text: {text ?? "<null>"})";
+            failure = $"counter UI did not contain a valid count (visible: {isVisible})";
             return false;
         }
 
