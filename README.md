@@ -20,8 +20,11 @@ The log also warns when no scorable loot has been detected; move closer and
 let the expedition markers load before starting another search.
 
 The planned path remains visible during placement, even if the detonator
-temporarily becomes untargetable. It stays until you clear it, start a new
-search, or change areas.
+temporarily becomes untargetable. After bombs detonate and Expedition monsters
+are defeated, the path clears automatically once the encounter has been quiet
+for a few seconds. You can also clear it manually; starting a new search or
+changing areas clears it as well. If no Expedition monsters are detected, use
+Clear Search to remove the path.
 
 Enable **4K enhanced path display** in the planner settings for thicker path
 lines and explosion circles, plus larger, bolder markers. In 4K mode, line
