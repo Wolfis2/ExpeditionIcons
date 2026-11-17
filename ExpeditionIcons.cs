@@ -61,6 +61,8 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
     private int? _editedIndex = null;
     private PathPlanner.DetailedLootScore _editedPathEval;
     private PathPlanner.DetailedLootScore EditedOrNativeScore => _editedPathEval ?? _plannerRunner?.CurrentBestPath;
+    private bool _showExplosiveCountPrompt;
+    private int _explosiveCount = 5;
 
     private Camera Camera => GameController.Game.IngameState.Camera;
 
@@ -109,6 +111,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
     private void StopSearch()
     {
+        _showExplosiveCountPrompt = false;
         if (_plannerRunner is { } run)
         {
             run.Stop();
@@ -134,12 +137,19 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             return;
         }
 
-        var environment = PlannerEnvironment;
-        if (environment.MaxExplosions <= 0)
+        _showExplosiveCountPrompt = true;
+    }
+
+    private void StartSearchWithExplosiveCount()
+    {
+        if (_zoneCleared || DetonatorPos == null)
         {
-            DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the game reported no explosives. Open the expedition detonator and try again.");
+            _showExplosiveCountPrompt = false;
+            DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the expedition is no longer available.");
             return;
         }
+
+        var environment = BuildEnvironment(_explosiveCount);
 
         if (environment.Loot.Count == 0)
         {
@@ -155,10 +165,42 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         plannerRunner.Start(Settings.PlannerSettings, environment, GameController.SoundController);
         _plannerRunner = plannerRunner;
         Settings.PlannerSettings.SearchState = SearchState.Searching;
+        _showExplosiveCountPrompt = false;
+    }
+
+    private void ShowExplosiveCountPrompt()
+    {
+        if (!_showExplosiveCountPrompt)
+        {
+            return;
+        }
+
+        if (ImGui.Begin("Expedition bomb count", ref _showExplosiveCountPrompt, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.Text("Enter the total number of explosives shown in game.");
+            var submitted = ImGui.InputInt("Explosives", ref _explosiveCount, 1, 5, ImGuiInputTextFlags.EnterReturnsTrue);
+            if (_explosiveCount < 1 || _explosiveCount > 100)
+            {
+                ImGui.Text("Enter a number between 1 and 100.");
+            }
+            else if (ImGui.Button("Start search") || submitted)
+            {
+                StartSearchWithExplosiveCount();
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel"))
+            {
+                _showExplosiveCountPrompt = false;
+            }
+        }
+
+        ImGui.End();
     }
 
     private void ClearSearch()
     {
+        _showExplosiveCountPrompt = false;
         if (_plannerRunner is { } run)
         {
             run.Stop();
@@ -172,6 +214,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
     public override void AreaChange(AreaInstance area)
     {
+        _showExplosiveCountPrompt = false;
         _plannerRunner?.Stop();
         _plannerRunner = null;
         _scoreHistory = [];
@@ -328,9 +371,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         return (detonatorPos.Pos + negVec, detonatorPos.Pos + posVec);
     }
 
-    private ExpeditionEnvironment PlannerEnvironment => BuildEnvironment();
-
-    private ExpeditionEnvironment BuildEnvironment()
+    private ExpeditionEnvironment BuildEnvironment(int explosiveCount)
     {
         if (DetonatorPos is not { Pos: var detonatorPos })
         {
@@ -429,7 +470,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             loot.FindAll(x => x.Item2 != null),
             _explosiveRange / GridToWorldMultiplier,
             _explosiveRadius / GridToWorldMultiplier,
-            ExpeditionInfo.TotalExplosiveCount,
+            explosiveCount,
             detonatorPos,
             IsValidPlacement,
             GetExclusionRect() ?? default,
@@ -460,6 +501,8 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         {
             StartSearch();
         }
+
+        ShowExplosiveCountPrompt();
 
         if (_zoneCleared)
         {

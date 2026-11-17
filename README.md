@@ -5,11 +5,14 @@
 Set a Start Search Hotkey in the planner settings, then approach an expedition
 detonator and press the key to generate a suggested chain. The default F13
 binding is intended to be changed if your keyboard does not have that key.
-You can also start the search using the settings button.
+You can also start the search using the settings button. Enter the total bomb
+count displayed by the game in the prompt, then press Enter or select Start
+search. The prompt remembers the last count until the plugin is reloaded.
+If you cannot interact with the prompt, open the ExileApi menu with F12.
 
 If no path appears, check the ExileApi debug log for an ExpeditionIcons message.
-The planner needs a detected detonator and a nonzero explosive count; open the
-detonator interface and try again if the game has not supplied the count.
+The planner needs a detected detonator and a valid bomb count. You do not need
+to enter explosive placement mode before planning.
 The log also warns when no scorable loot has been detected; move closer and
 let the expedition markers load before starting another search.
 
