@@ -138,7 +138,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             return;
         }
 
-        if (TryGetUnplacedExplosiveCount(out var count))
+        if (TryGetUnplacedExplosiveCount(out var count, out var failure))
         {
             _explosiveCount = count;
             DebugWindow.LogMsg($"ExpeditionIcons: Read {count} explosives from the expedition counter.");
@@ -146,22 +146,31 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             return;
         }
 
-        DebugWindow.LogMsg("ExpeditionIcons: Could not reliably determine the total bomb count; enter it in the prompt.");
+        DebugWindow.LogMsg($"ExpeditionIcons: Could not determine the bomb count ({failure}); enter it in the prompt.");
         _showExplosiveCountPrompt = true;
     }
 
-    private bool TryGetUnplacedExplosiveCount(out int count)
+    private bool TryGetUnplacedExplosiveCount(out int count, out string failure)
     {
         count = 0;
+        failure = null;
         if (GameController.EntityListWrapper.ValidEntitiesByType[EntityType.IngameIcon]
             .Any(entity => entity.Path == ExplosivePath))
         {
+            failure = "bombs already placed";
             return false;
         }
 
         Element element = GameController.IngameState.IngameUi.ExpeditionDetonatorElement;
-        if (element == null || !element.IsVisible)
+        if (element == null)
         {
+            failure = "detonator UI is unavailable";
+            return false;
+        }
+
+        if (!element.IsVisible)
+        {
+            failure = $"detonator UI is not visible (address: 0x{element.Address:X}, children: {element.ChildCount})";
             return false;
         }
 
@@ -170,13 +179,21 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             var children = element.Children;
             if (children == null || children.Count == 0 || children[0] == null)
             {
+                failure = $"counter UI is missing at depth {depth + 1} (children: {children?.Count ?? 0})";
                 return false;
             }
 
             element = children[0];
         }
 
-        return int.TryParse(element.Text, out count) && count is > 0 and <= 100;
+        var text = element.Text;
+        if (!int.TryParse(text, out count) || count is <= 0 or > 100)
+        {
+            failure = $"counter UI did not contain a valid count (text: {text ?? "<null>"})";
+            return false;
+        }
+
+        return true;
     }
 
     private void StartSearchWithExplosiveCount()
