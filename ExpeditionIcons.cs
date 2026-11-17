@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -64,6 +65,9 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
     private PathPlanner.DetailedLootScore EditedOrNativeScore => _editedPathEval ?? _plannerRunner?.CurrentBestPath;
     private bool _showExplosiveCountPrompt;
     private int _explosiveCount = 5;
+    private bool _encounterDiagnostics;
+    private long _nextEncounterDiagnostic;
+    private string _lastEncounterDiagnostic;
 
     private Camera Camera => GameController.Game.IngameState.Camera;
 
@@ -218,6 +222,9 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         _plannerRunner = plannerRunner;
         Settings.PlannerSettings.SearchState = SearchState.Searching;
         _showExplosiveCountPrompt = false;
+        _encounterDiagnostics = true;
+        _nextEncounterDiagnostic = 0;
+        _lastEncounterDiagnostic = null;
     }
 
     private void ShowExplosiveCountPrompt()
@@ -264,6 +271,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
     private void ClearSearch()
     {
+        _encounterDiagnostics = false;
         _showExplosiveCountPrompt = false;
         if (_plannerRunner is { } run)
         {
@@ -278,6 +286,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
     public override void AreaChange(AreaInstance area)
     {
+        _encounterDiagnostics = false;
         _showExplosiveCountPrompt = false;
         _plannerRunner?.Stop();
         _plannerRunner = null;
@@ -371,6 +380,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         }
 
         _playerGridPos = playerGridPos.Value;
+        LogEncounterDiagnostic();
         if (detonatorPos is { Pos: var dp } && _playerGridPos.Distance(dp) < 90)
         {
             if (DetonatorEntity is { } detonator)
@@ -410,6 +420,32 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         }
 
         return null;
+    }
+
+    private void LogEncounterDiagnostic()
+    {
+        if (!_encounterDiagnostics || Stopwatch.GetTimestamp() < _nextEncounterDiagnostic ||
+            DetonatorPos is not { Pos: var position })
+        {
+            return;
+        }
+
+        _nextEncounterDiagnostic = Stopwatch.GetTimestamp() + Stopwatch.Frequency;
+        var explosives = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.IngameIcon]
+            .Count(entity => entity.Path == ExplosivePath);
+        var monsters = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
+            .Where(entity => entity.IsValid && entity.IsHostile && entity.IsAlive &&
+                             entity.GridPosNum.Distance(position) < 200)
+            .GroupBy(entity => entity.Path)
+            .OrderBy(group => group.Key)
+            .Take(20)
+            .Select(group => $"{group.Key}={group.Count()}");
+        var snapshot = $"detonatorTargetable={DetonatorEntity?.IsTargetable}, explosives={explosives}, nearbyAlive=[{string.Join(", ", monsters)}]";
+        if (snapshot != _lastEncounterDiagnostic)
+        {
+            DebugWindow.LogMsg($"ExpeditionIcons encounter diagnostic: {snapshot}");
+            _lastEncounterDiagnostic = snapshot;
+        }
     }
 
     private (Vector2 Min, Vector2 Max)? GetExclusionRect()
