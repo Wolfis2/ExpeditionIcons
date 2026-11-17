@@ -168,18 +168,14 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             return false;
         }
 
-        if (!element.IsVisible)
-        {
-            failure = $"detonator UI is not visible (address: 0x{element.Address:X}, children: {element.ChildCount})";
-            return false;
-        }
+        var isVisible = element.IsVisible;
 
         for (var depth = 0; depth < 3; depth++)
         {
             var children = element.Children;
             if (children == null || children.Count == 0 || children[0] == null)
             {
-                failure = $"counter UI is missing at depth {depth + 1} (children: {children?.Count ?? 0})";
+                failure = $"counter UI is missing at depth {depth + 1} (visible: {isVisible}, children: {children?.Count ?? 0})";
                 return false;
             }
 
@@ -189,7 +185,13 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         var text = element.Text;
         if (!int.TryParse(text, out count) || count is <= 0 or > 100)
         {
-            failure = $"counter UI did not contain a valid count (text: {text ?? "<null>"})";
+            failure = $"counter UI did not contain a valid count (visible: {isVisible}, text: {text ?? "<null>"})";
+            return false;
+        }
+
+        if (!isVisible)
+        {
+            failure = $"detonator UI is hidden (counter reads {count})";
             return false;
         }
 
