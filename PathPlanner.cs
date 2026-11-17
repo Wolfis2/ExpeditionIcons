@@ -267,8 +267,9 @@ public class PathPlanner
             yield break;
         }
 
-        var bestPath = Enumerable.Repeat(Vector2.Zero, environment.MaxExplosions).ToList();
         var batch = Enumerable.Range(0, _settings.PathGenerationSize * 2).Select(_ => BuildPath(environment)).ToList();
+        var bestPath = batch[0];
+        var bestScore = GetScore(bestPath, environment);
         while (true)
         {
             var batchWithValues = batch
@@ -283,12 +284,13 @@ public class PathPlanner
                 .Select(x => Random.Shared.NextDouble() > _settings.PathMutateChance ? x : MutatePath(environment.StartingPoint, environment.ExplosionRange, x, environment));
             var newPaths = Enumerable.Range(0, (int)(_settings.PathGenerationSize * _settings.NewRandomPathInjectionRate)).Select(_ => BuildPath(environment));
             var newBatch = mixedAndMutated.Append(bestPath).Concat(newPaths).ToList();
-            if (batchWithValues[0].Item1 > GetScore(bestPath, environment))
+            if (batchWithValues[0].Item1 > bestScore)
             {
                 bestPath = batchWithValues[0].x;
+                bestScore = batchWithValues[0].Item1;
             }
 
-            yield return new PathState(bestPath, GetScore(bestPath, environment));
+            yield return new PathState(bestPath, bestScore);
             batch = newBatch;
         }
     }

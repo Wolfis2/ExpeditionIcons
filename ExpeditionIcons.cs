@@ -122,10 +122,37 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
 
     private void StartSearch()
     {
+        if (_zoneCleared)
+        {
+            DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the expedition has already been detonated.");
+            return;
+        }
+
+        if (DetonatorPos == null)
+        {
+            DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the expedition detonator was not found.");
+            return;
+        }
+
+        var environment = PlannerEnvironment;
+        if (environment.MaxExplosions <= 0)
+        {
+            DebugWindow.LogError("ExpeditionIcons: Cannot start path search because the game reported no explosives. Open the expedition detonator and try again.");
+            return;
+        }
+
+        if (environment.Loot.Count == 0)
+        {
+            DebugWindow.LogError("ExpeditionIcons: No scorable expedition loot was detected; the suggested path may not be useful. Move closer to the expedition and try again.");
+        }
+
         _scoreHistory = [];
+        _editedPath = null;
+        _editedIndex = null;
+        _editedPathEval = null;
         _plannerRunner?.Stop();
         var plannerRunner = new PathPlannerRunner();
-        plannerRunner.Start(Settings.PlannerSettings, PlannerEnvironment, GameController.SoundController);
+        plannerRunner.Start(Settings.PlannerSettings, environment, GameController.SoundController);
         _plannerRunner = plannerRunner;
         Settings.PlannerSettings.SearchState = SearchState.Searching;
     }
@@ -239,7 +266,10 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         _playerGridPos = playerGridPos.Value;
         if (detonatorPos is { Pos: var dp } && _playerGridPos.Distance(dp) < 90)
         {
-            _zoneCleared = DetonatorEntity?.IsTargetable != true;
+            if (DetonatorEntity is { } detonator)
+            {
+                _zoneCleared = !detonator.IsTargetable;
+            }
             if (_zoneCleared)
             {
                 ClearSearch();
@@ -426,14 +456,14 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
             StopSearch();
         }
 
-        if (_zoneCleared)
-        {
-            return;
-        }
-
         if (Settings.PlannerSettings.StartSearchHotkey.PressedOnce())
         {
             StartSearch();
+        }
+
+        if (_zoneCleared)
+        {
+            return;
         }
 
         var explosives3D = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.IngameIcon]
