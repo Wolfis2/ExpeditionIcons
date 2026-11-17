@@ -147,6 +147,12 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         }
 
         DebugWindow.LogMsg($"ExpeditionIcons: Could not determine the bomb count ({failure}); enter it in the prompt.");
+        var hovered = GameController.IngameState.UIHover;
+        if (hovered is { Address: not 0 })
+        {
+            DebugWindow.LogMsg($"ExpeditionIcons: Hovered UI element path: {hovered.PathFromRoot}");
+        }
+
         _showExplosiveCountPrompt = true;
     }
 
