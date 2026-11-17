@@ -236,7 +236,19 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         if (ImGui.Begin("Expedition bomb count", ref _showExplosiveCountPrompt, ImGuiWindowFlags.AlwaysAutoResize))
         {
             ImGui.Text("Enter the total number of explosives shown in game.");
-            var submitted = ImGui.InputInt("Explosives", ref _explosiveCount, 1, 5, ImGuiInputTextFlags.EnterReturnsTrue);
+            var submitted = ImGui.InputInt("Explosives", ref _explosiveCount, 0, 0, ImGuiInputTextFlags.EnterReturnsTrue);
+            ImGui.SameLine();
+            if (ImGui.Button("-") && _explosiveCount > 1)
+            {
+                _explosiveCount--;
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("+") && _explosiveCount < 100)
+            {
+                _explosiveCount++;
+            }
+
             if (_explosiveCount < 1 || _explosiveCount > 100)
             {
                 ImGui.Text("Enter a number between 1 and 100.");
@@ -703,6 +715,8 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
         if (EditedOrNativeScore is { PerPointScore.Count: > 0 } score)
         {
             var path = score.PerPointScore;
+            var enhanced4K = Settings.PlannerSettings.Enhanced4KPathDisplay.Value;
+            var lineThickness = enhanced4K ? Settings.PlannerSettings.PathLineThickness.Value : 1f;
             var firstPoint = DetonatorPos?.Pos ?? _playerGridPos;
             var prevPoint = firstPoint;
             for (var i = 0; i < path.Count; i++)
@@ -710,18 +724,21 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
                 var point = path[i].Point;
                 if (_largeMapOpen)
                 {
-                    Graphics.DrawLine(GetMapScreenPosition(prevPoint), GetMapScreenPosition(point), Settings.PlannerSettings.PathLineThickness, Settings.PlannerSettings.MapLineColor);
+                    Graphics.DrawLine(GetMapScreenPosition(prevPoint), GetMapScreenPosition(point), lineThickness, Settings.PlannerSettings.MapLineColor);
                 }
 
                 var worldPos = GetWorldScreenPosition(point);
-                Graphics.DrawLine(GetWorldScreenPosition(prevPoint), worldPos, Settings.PlannerSettings.PathLineThickness, Settings.PlannerSettings.WorldLineColor);
+                Graphics.DrawLine(GetWorldScreenPosition(prevPoint), worldPos, lineThickness, Settings.PlannerSettings.WorldLineColor);
                 var text = $"#{i}";
-                using (Graphics.SetTextScale(Settings.PlannerSettings.TextMarkerScale * 4))
+                using (Graphics.SetTextScale(Settings.PlannerSettings.TextMarkerScale * (enhanced4K ? 4 : 1)))
                 {
-                    Graphics.DrawBox(worldPos, worldPos + Graphics.MeasureText(text) + new Vector2(2, 1), Color.Black);
+                    Graphics.DrawBox(worldPos, worldPos + Graphics.MeasureText(text) + (enhanced4K ? new Vector2(2, 1) : Vector2.Zero), Color.Black);
                     Graphics.DrawText(text, worldPos, Color.White);
-                    Graphics.DrawText(text, worldPos + Vector2.UnitX, Color.White);
-                    Graphics.DrawText(text, worldPos + new Vector2(2, 0), Color.White);
+                    if (enhanced4K)
+                    {
+                        Graphics.DrawText(text, worldPos + Vector2.UnitX, Color.White);
+                        Graphics.DrawText(text, worldPos + new Vector2(2, 0), Color.White);
+                    }
                     prevPoint = point;
                 }
             }
@@ -737,7 +754,7 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
                 positions: path.Select(x => ExpandWithTerrainHeight(x.Point)).ToList(),
                 radius: _explosiveRadius,
                 color: Settings.PlannerSettings.ExplosiveColor.Value,
-                thickness: Settings.PlannerSettings.PathLineThickness);
+                thickness: lineThickness);
         }
     }
 
@@ -759,7 +776,10 @@ public class ExpeditionIcons : BaseSettingsPlugin<ExpeditionIconsSettings>
                     path[editedIndex] = pos;
                     scoreDiff = pp.GetDetailedScore(path, score.Environment);
                     DrawCirclesInWorld([ExpandWithTerrainHeight(pos)], _explosiveRadius, Color.LightBlue);
-                    Graphics.DrawLine(GetWorldScreenPosition(_editedPath[editedIndex]), GetWorldScreenPosition(pos), Settings.PlannerSettings.PathLineThickness, Settings.PlannerSettings.WorldLineColor);
+                    var lineThickness = Settings.PlannerSettings.Enhanced4KPathDisplay
+                        ? Settings.PlannerSettings.PathLineThickness.Value
+                        : 1f;
+                    Graphics.DrawLine(GetWorldScreenPosition(_editedPath[editedIndex]), GetWorldScreenPosition(pos), lineThickness, Settings.PlannerSettings.WorldLineColor);
 
                     if (Input.IsKeyDown(Settings.PlannerSettings.ConfirmEditorPlacementHotkey))
                     {

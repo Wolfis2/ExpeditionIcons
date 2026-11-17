@@ -19,9 +19,11 @@ to enter explosive placement mode before planning.
 The log also warns when no scorable loot has been detected; move closer and
 let the expedition markers load before starting another search.
 
-Path lines and suggested explosion circles default to 4 pixels and can be
-adjusted with Path Line Thickness. Markers are drawn at four times the Text
-Marker Scale setting and use a heavier outline for visibility.
+Enable **4K enhanced path display** in the planner settings for thicker path
+lines and explosion circles, plus larger, bolder markers. In 4K mode, line
+thickness is adjustable with Path Line Thickness and markers are drawn at four
+times the Text Marker Scale setting. With 4K mode off, the original line and
+marker sizes are used.
 
 If you like it, you can donate via:
 
